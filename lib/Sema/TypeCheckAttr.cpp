@@ -2266,7 +2266,8 @@ static bool isCCompatibleFuncDecl(FuncDecl *FD) {
 }
 
 void AttributeChecker::visitExternAttr(ExternAttr *attr) {
-  if (!Ctx.LangOpts.hasFeature(Feature::Extern)) {
+  if (!Ctx.LangOpts.hasFeature(Feature::Extern)
+      && !D->getModuleContext()->isStdlibModule()) {
     diagnoseAndRemoveAttr(attr, diag::attr_extern_experimental);
     return;
   }
@@ -2309,8 +2310,38 @@ void AttributeChecker::visitExternAttr(ExternAttr *attr) {
   }
 }
 
+static bool allowSymbolLinkageMarkers(ASTContext &ctx, Decl *D) {
+  if (ctx.LangOpts.hasFeature(Feature::SymbolLinkageMarkers))
+    return true;
+
+  auto *sourceFile = D->getDeclContext()->getParentModule()
+      ->getSourceFileContainingLocation(D->getStartLoc());
+  if (!sourceFile)
+    return false;
+
+  auto expansion = sourceFile->getMacroExpansion();
+  auto *macroAttr = sourceFile->getAttachedMacroAttribute();
+  if (!expansion || !macroAttr)
+    return false;
+
+  auto *decl = expansion.dyn_cast<Decl *>();
+  if (!decl)
+    return false;
+
+  auto *macroDecl = decl->getResolvedMacro(macroAttr);
+  if (!macroDecl)
+    return false;
+
+  if (macroDecl->getParentModule()->isStdlibModule() &&
+      macroDecl->getName().getBaseIdentifier()
+          .str().equals("_DebugDescriptionProperty"))
+    return true;
+
+  return false;
+}
+
 void AttributeChecker::visitUsedAttr(UsedAttr *attr) {
-  if (!Ctx.LangOpts.hasFeature(Feature::SymbolLinkageMarkers)) {
+  if (!allowSymbolLinkageMarkers(Ctx, D)) {
     diagnoseAndRemoveAttr(attr, diag::section_linkage_markers_disabled);
     return;
   }
@@ -2318,7 +2349,10 @@ void AttributeChecker::visitUsedAttr(UsedAttr *attr) {
   if (D->getDeclContext()->isLocalContext())
     diagnose(attr->getLocation(), diag::attr_only_at_non_local_scope,
              attr->getAttrName());
-  else if (D->getDeclContext()->isGenericContext())
+  else if (D->getDeclContext()->isGenericContext() &&
+           !D->getDeclContext()
+                ->getGenericSignatureOfContext()
+                ->areAllParamsConcrete())
     diagnose(attr->getLocation(), diag::attr_only_at_non_generic_scope,
              attr->getAttrName());
   else if (auto *VarD = dyn_cast<VarDecl>(D)) {
@@ -2333,7 +2367,7 @@ void AttributeChecker::visitUsedAttr(UsedAttr *attr) {
 }
 
 void AttributeChecker::visitSectionAttr(SectionAttr *attr) {
-  if (!Ctx.LangOpts.hasFeature(Feature::SymbolLinkageMarkers)) {
+  if (!allowSymbolLinkageMarkers(Ctx, D)) {
     diagnoseAndRemoveAttr(attr, diag::section_linkage_markers_disabled);
     return;
   }
@@ -2345,7 +2379,10 @@ void AttributeChecker::visitSectionAttr(SectionAttr *attr) {
   if (D->getDeclContext()->isLocalContext())
     return; // already diagnosed
 
-  if (D->getDeclContext()->isGenericContext())
+  if (D->getDeclContext()->isGenericContext() &&
+      !D->getDeclContext()
+           ->getGenericSignatureOfContext()
+           ->areAllParamsConcrete())
     diagnose(attr->getLocation(), diag::attr_only_at_non_generic_scope,
              attr->getAttrName());
   else if (auto *VarD = dyn_cast<VarDecl>(D)) {

@@ -1007,24 +1007,8 @@ bool swift::diagnoseSendabilityErrorBasedOn(
 }
 
 void swift::diagnoseUnnecessaryPreconcurrencyImports(SourceFile &sf) {
-  if (!shouldDiagnosePreconcurrencyImports(sf))
-    return;
-
-  ASTContext &ctx = sf.getASTContext();
-
-  if (ctx.TypeCheckerOpts.SkipFunctionBodies != FunctionBodySkipping::None)
-    return;
-
-  for (const auto &import : sf.getImports()) {
-    if (import.options.contains(ImportFlags::Preconcurrency) &&
-        import.importLoc.isValid() &&
-        !sf.hasImportUsedPreconcurrency(import)) {
-      ctx.Diags.diagnose(
-          import.importLoc, diag::remove_predates_concurrency_import,
-          import.module.importedModule->getName())
-        .fixItRemove(import.preconcurrencyRange);
-    }
-  }
+  // NOTE: Disabled in Swift 6.0.
+  return;
 }
 
 /// Produce a diagnostic for a single instance of a non-Sendable type where
@@ -3964,6 +3948,20 @@ namespace {
       return nullptr;
     }
 
+    /// Check whether there are _unsafeInheritExecutor_ workarounds in the
+    /// given _Concurrency module.
+    static bool hasUnsafeInheritExecutorWorkarounds(
+        DeclContext *dc, SourceLoc loc
+      ) {
+      ASTContext &ctx = dc->getASTContext();
+      Identifier name =
+          ctx.getIdentifier("_unsafeInheritExecutor_withUnsafeContinuation");
+      NameLookupOptions lookupOptions = defaultUnqualifiedLookupOptions;
+      LookupResult lookup = TypeChecker::lookupUnqualified(
+          dc, DeclNameRef(name), loc, lookupOptions);
+      return !lookup.empty();
+    }
+
     void recordCurrentContextIsolation(
         CurrentContextIsolationExpr *isolationExpr) {
       // If an actor has already been assigned, we're done.
@@ -3984,6 +3982,12 @@ namespace {
                                        diag::isolation_in_inherits_executor,
                                        inDefaultArgument);
         diag.limitBehaviorIf(inConcurrencyModule, DiagnosticBehavior::Warning);
+
+        if (!inConcurrencyModule &&
+            !hasUnsafeInheritExecutorWorkarounds(func, func->getLoc())) {
+          diag.limitBehavior(DiagnosticBehavior::Warning);
+        }
+
         replaceUnsafeInheritExecutorWithDefaultedIsolationParam(func, diag);
       }
 
@@ -4111,10 +4115,13 @@ namespace {
           return false;
         }
 
-        if (auto param =  dyn_cast<ParamDecl>(value)){
-          if(param->isInOut()){
-              ctx.Diags.diagnose(loc, diag::concurrent_access_of_inout_param, param->getName());
-              return true;
+        if (auto param = dyn_cast<ParamDecl>(value)) {
+          if (param->isInOut()) {
+            ctx.Diags
+                .diagnose(loc, diag::concurrent_access_of_inout_param,
+                          param->getName())
+                .limitBehaviorUntilSwiftVersion(limit, 6);
+            return true;
           }
         }
 
@@ -6186,7 +6193,11 @@ bool swift::checkSendableConformance(
     return false;
 
   // If this is an always-unavailable conformance, there's nothing to check.
-  if (auto ext = dyn_cast<ExtensionDecl>(conformanceDC)) {
+  // We always use the root conformance for this check, because inherited
+  // conformances need to walk back to the original declaration for the
+  // superclass conformance to find an unavailable attribute.
+  if (auto ext = dyn_cast<ExtensionDecl>(
+          conformance->getRootConformance()->getDeclContext())) {
     if (AvailableAttr::isUnavailable(ext))
       return false;
   }
