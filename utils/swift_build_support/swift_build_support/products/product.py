@@ -370,6 +370,12 @@ class Product(object):
     def get_linux_sysroot(self, platform, arch):
         if not self.is_cross_compile_target('{}-{}'.format(platform, arch)):
             return None
+
+        # Use cross compile deps path if passed for sysroot
+        if self.args.cross_compile_deps_path:
+            return self.args.cross_compile_deps_path
+
+        # Otherwise generate default path to sysroot
         sysroot_arch, _, abi = self.get_linux_target_components(arch)
         # $ARCH-$PLATFORM-$ABI
         # E.x.: aarch64-linux-gnu
@@ -415,6 +421,11 @@ class Product(object):
         toolchain_args['CMAKE_FIND_ROOT_PATH_MODE_LIBRARY'] = 'ONLY'
         toolchain_args['CMAKE_FIND_ROOT_PATH_MODE_INCLUDE'] = 'ONLY'
         toolchain_args['CMAKE_FIND_ROOT_PATH_MODE_PACKAGE'] = 'ONLY'
+
+        # Force use of lld when cross compiling with external sysroot
+        if self.args.cross_compile_deps_path:
+            toolchain_args['CMAKE_SHARED_LINKER_FLAGS'] = "-fuse-ld=lld"
+            toolchain_args['CMAKE_EXE_LINKER_FLAGS'] = "-fuse-ld=lld"
 
         # Sort by the key so that we always produce the same toolchain file
         data = sorted(toolchain_args.items(), key=lambda x: x[0])
