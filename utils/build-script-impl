@@ -1818,6 +1818,14 @@ for host in "${ALL_HOSTS[@]}"; do
                     SWIFT_ENABLE_RUNTIME_FUNCTION_COUNTERS="${SWIFT_STDLIB_ENABLE_ASSERTIONS}"
                 fi
 
+                if [ ! -z ${CROSS_COMPILE_DEPS_PATH} ] ; then
+                    cmake_options+=(
+                        -DCROSS_COMPILE_DEPS_PATH:PATH="${CROSS_COMPILE_DEPS_PATH}"
+                        -DCMAKE_LINKER=lld
+                        -DSWIFT_USE_LINKER=lld
+                    )
+                fi
+
                 cmake_options=(
                     "${cmake_options[@]}"
                     -DCMAKE_C_FLAGS="$(swift_c_flags ${host})"

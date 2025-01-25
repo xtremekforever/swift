@@ -360,7 +360,7 @@ macro(configure_sdk_unix name architectures)
   # depending on the architecture, so having a single value is the only
   # possibility right now.
   set(SWIFT_SDK_${prefix}_CXX_OVERLAY_SWIFT_COMPILE_FLAGS
-      -Xcc --gcc-toolchain=/usr
+      -Xcc --gcc-toolchain=${CROSS_COMPILE_DEPS_PATH}/usr
     CACHE STRING "Extra flags for compiling the C++ overlay")
 
   set(_default_threading_package "pthreads")
@@ -407,7 +407,11 @@ macro(configure_sdk_unix name architectures)
         message(FATAL_ERROR "unknown arch for android SDK: ${arch}")
       endif()
     else()
-      set(SWIFT_SDK_${prefix}_ARCH_${arch}_PATH "/" CACHE STRING "CMAKE_SYSROOT for ${prefix} ${arch}")
+      if (CROSS_COMPILE_DEPS_PATH)
+        set(SWIFT_SDK_${prefix}_ARCH_${arch}_PATH ${CROSS_COMPILE_DEPS_PATH} CACHE STRING "CMAKE_SYSROOT for ${prefix} ${arch}")
+      else()
+        set(SWIFT_SDK_${prefix}_ARCH_${arch}_PATH "/" CACHE STRING "CMAKE_SYSROOT for ${prefix} ${arch}")
+      endif()
 
       if("${prefix}" STREQUAL "LINUX")
         if(arch MATCHES "(armv5)")
