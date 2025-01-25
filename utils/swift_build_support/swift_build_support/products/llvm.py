@@ -284,6 +284,9 @@ class LLVM(cmake_product.CMakeProduct):
         # llvm/tools, e.g. to build LLDB.
 
         llvm_c_flags = ' '.join(self.llvm_c_flags(platform, arch))
+        # When cross-compiling, use lld
+        if self.is_cross_compile_target(host_target):
+            llvm_c_flags += ' -w -fuse-ld=lld'
         llvm_cmake_options.define('CMAKE_C_FLAGS', llvm_c_flags)
         llvm_cmake_options.define('CMAKE_CXX_FLAGS', llvm_c_flags)
         llvm_cmake_options.define('CMAKE_C_FLAGS_RELWITHDEBINFO', '-O2 -DNDEBUG')
