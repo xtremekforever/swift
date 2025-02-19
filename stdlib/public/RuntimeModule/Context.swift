@@ -878,10 +878,11 @@ extension arm_gprs {
 
   #if os(Linux) && arch(arm)
   init(with mctx: mcontext_t) {
+    var mctxCopy = mctx
     withUnsafeMutablePointer(to: &gprs._r) {
-      $0.withMemoryRebound(to: UInt32.self, capacity: 16) {
-        withUnsafePointer(to: &mctx.arm_r0) {
-          $0.withMemoryRebound(to: UInt32.self, capacity: 16) {
+      $0.withMemoryRebound(to: UInt32.self, capacity: 16) { to in
+        withUnsafePointer(to: &mctxCopy.arm_r0) {
+          $0.withMemoryRebound(to: UInt32.self, capacity: 16) { from in
             for n in 0..<16 {
               to[n] = from[n]
             }
