@@ -697,6 +697,18 @@ def create_argument_parser():
            help='A space separated list of targets to cross-compile host '
                 'Swift tools for. Can be used multiple times.')
 
+    option('--cross-compile-sysroots', store,
+           type=argparse.ShellSplitType(),
+           default=[],
+           help='The path(s) to directories that contains sysroots for the '
+                'cross-compilation of the stdlib and corelibs for the given target ')
+
+    option('--cross-compile-flags', store,
+           type=argparse.ShellSplitType(),
+           default=[],
+           help='Extra flags to pass to the compiler when cross-compiling the stdlib '
+                'and corelibs for the given targets ')
+
     option('--infer-cross-compile-hosts-on-darwin', toggle_true,
            help="When building on Darwin, automatically populate cross-compile-hosts "
                 "based on the architecture build-script is running on. "
@@ -750,6 +762,12 @@ def create_argument_parser():
 
     option('--enable-new-runtime-build', toggle_true,
            help='True to enable the new runtime build.')
+
+    # New experimental build products that can cross-compile
+    option(['--enable-experimental-build-product'],
+           toggle_true('enable_experimental_build_product'),
+           help='Use the new experimental build products that can cross-compile '
+                'to various platforms and architectures ')
 
     # -------------------------------------------------------------------------
     in_group('Options to select projects')
