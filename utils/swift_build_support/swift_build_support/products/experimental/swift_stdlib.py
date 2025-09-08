@@ -1,8 +1,8 @@
-# swift_build_support/products/swift.py -------------------------*- python -*-
+# swift_build_support/products/experimental/swift_stdlib.py ------*- python -*-
 #
 # This source file is part of the Swift.org open source project
 #
-# Copyright (c) 2014 - 2017 Apple Inc. and the Swift project authors
+# Copyright (c) 2014 - 2025 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
 # See https://swift.org/LICENSE.txt for license information
@@ -65,8 +65,8 @@ class ExperimentalSwiftStdlib(cmake_product.CMakeProduct):
         return os.path.join(build_root, 'llvm-%s' % host_target)
 
     def _build_stdlib(self, host_target, llvm_cmake_dir):
-        target_triple = self._get_target_triple(host_target)
-        platform, arch = host_target.split('-')
+        (platform, arch) = host_target.split('-')
+        target_triple = self.get_linux_target(platform, arch)
         sysroot = self._get_sysroot(host_target)
 
         self.cmake_options.define('CMAKE_INSTALL_PREFIX:PATH', '/usr')
@@ -75,7 +75,7 @@ class ExperimentalSwiftStdlib(cmake_product.CMakeProduct):
             'CMAKE_SYSTEM_NAME:STRING', self._get_system_name(platform)
         )
         self.cmake_options.define(
-            'CMAKE_SYSTEM_PROCESSOR:STRING', self._get_system_processor(arch)
+            'CMAKE_SYSTEM_PROCESSOR:STRING', self.get_system_processor(arch)
         )
         self.cmake_options.define('CMAKE_SYSROOT:PATH', sysroot)
 
@@ -261,22 +261,5 @@ class ExperimentalSwiftStdlib(cmake_product.CMakeProduct):
             return 'FreeBSD'
         elif platform == 'openbsd':
             return 'OpenBSD'
-        else:
-            raise ValueError(f"Unsupported platform for cross-compilation: {platform}")
-
-    def _get_system_processor(self, arch):
-        if arch == 'armv7':
-            return 'armv7-a'
-        return arch
-
-    def _get_target_triple(self, host_target):
-        (platform, arch) = host_target.split('-')
-        if platform == 'linux':
-            if arch in ('armv6', 'armv7'):
-                return f"{arch}-unknown-{platform}-gnueabihf"
-            else:
-                return f"{arch}-unknown-{platform}-gnu"
-        elif platform == 'freebsd' or platform == 'openbsd':
-            return f"{arch}-unknown-{platform}"
         else:
             raise ValueError(f"Unsupported platform for cross-compilation: {platform}")

@@ -360,7 +360,7 @@ class Product(object):
         # E.x.: Hard ABI or Soft ABI for Linux map to gnueabihf
         arch_platform_to_abi = {
             # For now always map to hard float ABI.
-            'armv7': ('arm', 'gnueabihf')
+            'armv7': ('armv7', 'gnueabihf')
         }
 
         abi = 'gnu'
@@ -402,6 +402,9 @@ class Product(object):
         sysroot_arch, vendor, abi = self.get_linux_target_components(arch)
         return '{}-{}-linux-{}'.format(sysroot_arch, vendor, abi)
 
+    def get_system_processor(self, arch):
+        return arch if not arch == 'armv7' else 'armv7-a'
+
     def generate_linux_toolchain_file(self, platform, arch, crosscompiling=True):
         """
         Generates a new CMake tolchain file that specifies Linux as a target
@@ -418,12 +421,11 @@ class Product(object):
         if crosscompiling:
             if platform == "linux":
                 toolchain_args['CMAKE_SYSTEM_NAME'] = 'Linux'
-                toolchain_args['CMAKE_SYSTEM_PROCESSOR'] = arch
+                toolchain_args['CMAKE_SYSTEM_PROCESSOR'] = self.get_system_processor(arch)
             elif platform == "android":
                 toolchain_args['CMAKE_SYSTEM_NAME'] = 'Android'
                 toolchain_args['CMAKE_SYSTEM_VERSION'] = self.args.android_api_level
-                toolchain_args['CMAKE_SYSTEM_PROCESSOR'] = arch if not arch == 'armv7' \
-                                                           else 'armv7-a'
+                toolchain_args['CMAKE_SYSTEM_PROCESSOR'] = self.get_system_processor(arch)
                 toolchain_args['CMAKE_ANDROID_NDK'] = self.args.android_ndk
                 toolchain_args['CMAKE_FIND_ROOT_PATH'] = self.args.cross_compile_deps_path
                 # This is a workaround for a CMake 3.30+ bug,

@@ -13,6 +13,7 @@
 from .benchmarks import Benchmarks
 from .cmark import CMark
 from .experimental.swift_stdlib import ExperimentalSwiftStdlib
+from .experimental.libdispatch import ExperimentalLibdispatch
 from .curl import LibCurl
 from .earlyswiftdriver import EarlySwiftDriver
 from .foundation import Foundation
@@ -55,6 +56,7 @@ __all__ = [
     'Foundation',
     'FoundationTests',
     'ExperimentalSwiftStdlib',
+    'ExperimentalLibdispatch',
     'SwiftFoundationTests',
     'LibCXX',
     'LibDispatch',

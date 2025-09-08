@@ -684,6 +684,8 @@ class BuildScriptInvocation(object):
 
         builder.add_product(products.ExperimentalSwiftStdlib,
                             is_enabled=self.args.enable_experimental_build_product)
+        builder.add_product(products.ExperimentalLibdispatch,
+                            is_enabled=self.args.enable_experimental_build_product)
 
         builder.add_product(products.WasmKit,
                             is_enabled=self.args.build_wasmkit)
