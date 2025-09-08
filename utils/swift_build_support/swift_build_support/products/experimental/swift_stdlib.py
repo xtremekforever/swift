@@ -54,39 +54,15 @@ class ExperimentalSwiftStdlib(cmake_product.CMakeProduct):
         return self.should_build(host_target)
 
     def build(self, host_target):
-        llvm_build_dir = self._configure_llvm(host_target)
+        llvm_build_dir = self._llvm_build_dir(host_target)
         llvm_cmake_dir = os.path.join(llvm_build_dir, 'lib', 'cmake', 'llvm')
 
         # Stdlib
         self._build_stdlib(host_target, llvm_cmake_dir)
 
-    # TODO: We should use the actual llvm build product here- that would be more
-    # useful than invoking cmake manually from here
-    def _configure_llvm(self, host_target):
+    def _llvm_build_dir(self, host_target):
         build_root = os.path.dirname(self.build_dir)
-        build_dir = os.path.join(
-            build_root, 'llvm-%s' % host_target)
-        llvm_source_dir = os.path.join(
-            os.path.dirname(self.source_dir), 'llvm-project', 'llvm')
-        cmake_options = cmake.CMakeOptions()
-        cmake_options.define('CMAKE_BUILD_TYPE:STRING', self.args.build_variant)
-        cmake_options.define('CMAKE_C_COMPILER_WORKS:BOOL', 'TRUE')
-        cmake_options.define('CMAKE_CXX_COMPILER_WORKS:BOOL', 'TRUE')
-        cmake_options.define('LLVM_COMPILER_CHECKED:BOOL', 'TRUE')
-        if self.args.build_runtime_with_host_compiler:
-            cmake_options.define('CMAKE_ASM_COMPILER:PATH', self.toolchain.cc)
-
-        llvm_cmake = cmake.CMake(
-            self.args, self.toolchain,
-            prefer_native_toolchain=not self.args.build_runtime_with_host_compiler
-        )
-        # Only configure LLVM, not build it because we just need
-        # LLVM CMake functionalities
-        shell.call(["env", self.toolchain.cmake, "-B", build_dir]
-                   + list(llvm_cmake.common_options(self))
-                   + list(cmake_options)
-                   + [llvm_source_dir])
-        return build_dir
+        return os.path.join(build_root, 'llvm-%s' % host_target)
 
     def _build_stdlib(self, host_target, llvm_cmake_dir):
         target_triple = self._get_target_triple(host_target)

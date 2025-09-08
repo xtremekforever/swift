@@ -383,9 +383,16 @@ class Product(object):
         return sysroot_arch, vendor, abi
 
     def get_linux_sysroot(self, platform, arch):
-        if not self.is_cross_compile_target('{}-{}'.format(platform, arch)):
+        target = '{}-{}'.format(platform, arch)
+        if not self.is_cross_compile_target(target):
             return None
         sysroot_arch, _, abi = self.get_linux_target_components(arch)
+
+        # Use cross_compile_sysroots if passed
+        if self.args.cross_compile_hosts and self.args.cross_compile_sysroots:
+            index = self.args.cross_compile_hosts.index(target)
+            return self.args.cross_compile_sysroots[index]
+
         # $ARCH-$PLATFORM-$ABI
         # E.x.: aarch64-linux-gnu
         sysroot_dirname = '{}-{}-{}'.format(sysroot_arch, platform, abi)
@@ -512,6 +519,9 @@ class Product(object):
 
     def common_cross_c_flags(self, platform, arch, include_arch=False):
         cross_flags = []
+
+        # When cross-compiling, lld must be used
+        cross_flags.append('-w -fuse-ld=lld')
 
         target = self.target_for_platform(platform, arch, include_version=True)
         if include_arch and target:
